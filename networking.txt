@@ -1,44 +1,97 @@
 Computer Networking For DevOps + System Design
+================================================
 
 Agenda:
-• The Physical Internet / How the
-    Internet Works
-• The Addressing for internet
-• How the Data moves in the Internet
-    (OSI / TCP/IP Model)
+• The Physical Internet / How the Internet Works
+• Addressing for the Internet
+• How Data Moves in the Internet (OSI / TCP/IP Model)
 • Security for the Internet (VPC)
-• System Design & How to design
-    Applications
+• System Design & How to Design Applications
 
 
-stand alone is when a device it not connected to a network.
-if those connected in together is called computer network
-interconnected network of devices.
+=============================
+Lecture 1: How the Internet Works
+=============================
+
+Standalone: a device that is not connected to any network.
+Computer Network: devices connected together form a computer network — an interconnected network of devices.
 
 
-all devices are connected with each other with cables called optic filer over seas
+--- Physical Infrastructure ---
+
+All devices are connected with each other via optical fiber cables laid undersea.
+
+World level   : Optical fiber cables run undersea between continents.
+Country level : WAN (Wide Area Network) — owned by telecom companies; internet is leased from them.
+City level    : MAN (Metropolitan Area Network) — passes internet to cities.
+                IXP (Internet Exchange Point) sits near MAN and sends the internet to ISPs physically.
+House level   : ISP delivers internet to homes via LAN (Local Area Network) and Wi-Fi.
 
 
-world level : optical fiber cables sea ways.
-at country level : WAN  network is there which is owned my a company we cay from the land recident.
-city level : using MAN network it is passed to cities, here comes the IXP which sits near MAN  and send the internet to ISP Physically.
-house level :   IPS pass the internet with LAN and WIFI
+--- Key Networking Terms ---
 
-data is transfer using packets. from source destination. time taken for a package from source to destination is called latency.
-bandwidth is the speed with the package is sent.( in another words its like the speed we discussed is the actaully speed of wire we subscribed to transfer data.) also its the bandwidth meaning how bigger package can go in one package no relation with speed.
-in some cases the packages are travelled with different speed some are faster some go slow , so its called jitter.
-packet loss: some segment of the package are dropped while stream is called packet loss.
+Packet      : Unit of data transferred from source to destination.
+Latency     : Time taken for a packet to travel from source to destination.
+Bandwidth   : The maximum rate of data transfer; how much data can be sent at once (not the speed of the wire).
+Jitter      : Variation in packet travel time — some packets arrive faster, some slower.
+Packet Loss : When segments/packets are dropped during transmission (common in streaming).
 
 
-lets understand the physical devices and communication:
+--- Physical Devices ---
 
-Router: routes the packets between network.
-switch : connecting multiple devices to internet at datacenter is called switch. 
-HUB: old age switch.
+Router  : Routes packets between networks.
+Switch  : Connects multiple devices within a network (used in data centers).
+Hub     : An older, less efficient version of a switch.
 
-data center: provides data, meaning the information must be travelled, so data center is the heart of internet.
-CDN(content delivery network):  if the data is images or static data then its called CDN, creating a cache meaning a copy at edge location where user can access the data in short time temporarly.
-local zones are used in edge computing(caching).
 
-availabelity zone, its nothing but the same scenerio where each region have different availabelity underneeth.
-better way to understand is that an apple stores in same region often serves for better providability.
+--- Infrastructure ---
+
+Data Center : Stores and serves data; the heart of the internet.
+CDN (Content Delivery Network) : Caches static content (images, files) at edge locations closer to users for faster access.
+Local Zones : Used in edge computing for caching data near end users.
+Availability Zone : A physically isolated location within a region. Multiple AZs in a region improve availability and fault tolerance.
+                    Example: Apple stores in the same region serve users for better availability.
+
+
+=============================
+Lecture 2: Addressing for the Internet
+=============================
+
+Every device on the internet has a unique address.
+For addressing, we use the Internet Protocol (IP) — a set of rules for exchanging information using unique IP addresses.
+
+IPv4:
+  - 32-bit address, written as 4 decimal numbers (e.g., 192.168.1.1)
+  - Provided a unique address to each device
+  - Running out due to the explosion of connected devices
+
+IPv6:
+  - 128-bit alphanumeric address with 6 sections
+  - Can create 340 undecillion (3.4 × 10^38) unique addresses
+
+Subnet:
+  - A network inside a larger network (internet within an internet)
+  - Each subnet has its own IPv4 address space
+  - Created to extend the life of IPv4 by dividing address space
+
+CIDR (Classless Inter-Domain Routing):
+  - A method for allocating IP addresses within subnets
+  - Notation: IP/prefix (e.g., 0.0.0.0/16)
+  - Formula: 2^(32-n) gives the number of available IP addresses
+  - As the prefix number (n) increases, the number of available addresses decreases
+  - /0 gives ~4.3 billion addresses
+  - First address in a range = Network address
+  - Last address in a range  = Broadcast address
+
+
+--- DNS (Domain Name System) ---
+
+Maps IP addresses to human-readable hostnames — like a phone directory for the internet.
+All mappings are stored in DNS servers.
+
+DNS Resolution Flow:
+  1. Client sends a query (it doesn't know the IP address).
+  2. Query goes to a Root DNS Server.
+  3. Root server directs to the TLD (Top-Level Domain) Server (e.g., .com, .org).
+  4. TLD server directs to the Authoritative DNS Server, which holds the actual IP mapping.
+  5. IP address is returned to the client and cached locally for future requests.
