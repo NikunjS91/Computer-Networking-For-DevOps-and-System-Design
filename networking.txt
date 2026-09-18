@@ -2,96 +2,214 @@ Computer Networking For DevOps + System Design
 ================================================
 
 Agenda:
-• The Physical Internet / How the Internet Works
-• Addressing for the Internet
-• How Data Moves in the Internet (OSI / TCP/IP Model)
-• Security for the Internet (VPC)
-• System Design & How to Design Applications
+  1. The Physical Internet — How the Internet Works
+  2. Addressing for the Internet
+  3. How Data Moves in the Internet (OSI / TCP/IP Model)
+  4. Security for the Internet (VPC)
+  5. System Design & How to Design Applications
 
 
-=============================
-Lecture 1: How the Internet Works
-=============================
+╔══════════════════════════════════════╗
+║  Lecture 1: How the Internet Works   ║
+╚══════════════════════════════════════╝
 
-Standalone: a device that is not connected to any network.
-Computer Network: devices connected together form a computer network — an interconnected network of devices.
+Standalone   : A device not connected to any network.
+               Example: an air-gapped laptop in a secure lab.
 
-
---- Physical Infrastructure ---
-
-All devices are connected with each other via optical fiber cables laid undersea.
-
-World level   : Optical fiber cables run undersea between continents.
-Country level : WAN (Wide Area Network) — owned by telecom companies; internet is leased from them.
-City level    : MAN (Metropolitan Area Network) — passes internet to cities.
-                IXP (Internet Exchange Point) sits near MAN and sends the internet to ISPs physically.
-House level   : ISP delivers internet to homes via LAN (Local Area Network) and Wi-Fi.
+Computer Network : Devices connected together — an interconnected set of devices
+                   that can communicate and share resources.
+                   Example: your home Wi-Fi connecting a laptop, phone, and smart TV.
 
 
---- Key Networking Terms ---
+┌─────────────────────────────────┐
+│  Physical Infrastructure        │
+└─────────────────────────────────┘
 
-Packet      : Unit of data transferred from source to destination.
-Latency     : Time taken for a packet to travel from source to destination.
-Bandwidth   : The maximum rate of data transfer; how much data can be sent at once (not the speed of the wire).
-Jitter      : Variation in packet travel time — some packets arrive faster, some slower.
-Packet Loss : When segments/packets are dropped during transmission (common in streaming).
+All devices ultimately connect via optical fiber cables — including cables laid
+on the ocean floor between continents.
 
+  World level   : Optical fiber cables run undersea between continents.
+                  Example: the SEA-ME-WE 4 cable connects Europe to Southeast Asia.
 
---- Physical Devices ---
+  Country level : WAN (Wide Area Network) — owned by telecom companies;
+                  ISPs lease internet access from them.
+                  Example: AT&T or Jio owns the backbone infrastructure.
 
-Router  : Routes packets between networks.
-Switch  : Connects multiple devices within a network (used in data centers).
-Hub     : An older, less efficient version of a switch.
+  City level    : MAN (Metropolitan Area Network) — carries internet to cities.
+                  IXP (Internet Exchange Point) sits near MAN and hands internet
+                  traffic to ISPs physically.
+                  Example: Equinix NY runs a major IXP where dozens of ISPs peer.
 
-
---- Infrastructure ---
-
-Data Center : Stores and serves data; the heart of the internet.
-CDN (Content Delivery Network) : Caches static content (images, files) at edge locations closer to users for faster access.
-Local Zones : Used in edge computing for caching data near end users.
-Availability Zone : A physically isolated location within a region. Multiple AZs in a region improve availability and fault tolerance.
-                    Example: Apple stores in the same region serve users for better availability.
-
-
-=============================
-Lecture 2: Addressing for the Internet
-=============================
-
-Every device on the internet has a unique address.
-For addressing, we use the Internet Protocol (IP) — a set of rules for exchanging information using unique IP addresses.
-
-IPv4:
-  - 32-bit address, written as 4 decimal numbers (e.g., 192.168.1.1)
-  - Provided a unique address to each device
-  - Running out due to the explosion of connected devices
-
-IPv6:
-  - 128-bit alphanumeric address with 6 sections
-  - Can create 340 undecillion (3.4 × 10^38) unique addresses
-
-Subnet:
-  - A network inside a larger network (internet within an internet)
-  - Each subnet has its own IPv4 address space
-  - Created to extend the life of IPv4 by dividing address space
-
-CIDR (Classless Inter-Domain Routing):
-  - A method for allocating IP addresses within subnets
-  - Notation: IP/prefix (e.g., 0.0.0.0/16)
-  - Formula: 2^(32-n) gives the number of available IP addresses
-  - As the prefix number (n) increases, the number of available addresses decreases
-  - /0 gives ~4.3 billion addresses
-  - First address in a range = Network address
-  - Last address in a range  = Broadcast address
+  House level   : LAN (Local Area Network) and Wi-Fi deliver internet to homes.
+                  Example: your home router creates a LAN (e.g., 192.168.1.x range)
+                  and all devices in your house share one ISP connection.
 
 
---- DNS (Domain Name System) ---
+┌─────────────────────────────────┐
+│  Key Networking Terms           │
+└─────────────────────────────────┘
 
-Maps IP addresses to human-readable hostnames — like a phone directory for the internet.
-All mappings are stored in DNS servers.
+  Packet      : The unit of data transferred from source to destination.
+                Example: a 1 MB file is broken into ~700 packets of ~1,500 bytes each.
 
-DNS Resolution Flow:
-  1. Client sends a query (it doesn't know the IP address).
-  2. Query goes to a Root DNS Server.
-  3. Root server directs to the TLD (Top-Level Domain) Server (e.g., .com, .org).
-  4. TLD server directs to the Authoritative DNS Server, which holds the actual IP mapping.
-  5. IP address is returned to the client and cached locally for future requests.
+  Latency     : Time taken for a packet to travel source → destination.
+                Example: a ping from New York to London is ~75 ms.
+
+  Bandwidth   : Maximum rate of data transfer — how much data can be sent at once
+                (not the speed of the wire).
+                Example: a 100 Mbps connection can transfer 100 megabits per second.
+
+  Jitter      : Variation in packet travel time.
+                Example: VoIP call sounds choppy when some packets take 20 ms and
+                others take 80 ms — that 60 ms variation is jitter.
+
+  Packet Loss : Packets dropped during transmission.
+                Example: 2% packet loss during a video stream causes pixelation or
+                brief freezes.
+
+
+┌─────────────────────────────────┐
+│  Physical Devices               │
+└─────────────────────────────────┘
+
+  Router  : Routes packets between different networks using IP addresses.
+            Example: your home router connects your LAN (192.168.x.x) to the
+            public internet.
+
+  Switch  : Connects multiple devices within the same network using MAC addresses.
+            Example: a 48-port switch in a data center rack links 48 servers.
+
+  Hub     : Older, dumb version of a switch — broadcasts to all ports instead of
+            forwarding only to the destination.
+            Example: replaced by switches in virtually all modern networks.
+
+
+┌─────────────────────────────────┐
+│  Infrastructure                 │
+└─────────────────────────────────┘
+
+  Data Center          : Stores and serves data; the heart of the internet.
+                         Example: AWS us-east-1 is a region of data centers in
+                         Northern Virginia.
+
+  CDN (Content Delivery Network) : Caches static content at edge locations
+                         closer to users for faster access.
+                         Example: Cloudflare caches your website's images at 300+
+                         edge locations so a user in Tokyo doesn't fetch from a
+                         server in New York.
+
+  Local Zones / Edge   : Caches data even closer to end users for ultra-low latency.
+                         Example: AWS Local Zone in Los Angeles lets LA users get
+                         <10 ms latency instead of ~60 ms to the nearest full region.
+
+  Availability Zone    : A physically isolated location within a region.
+                         Multiple AZs improve availability and fault tolerance.
+                         Example: deploying your app across us-east-1a, us-east-1b,
+                         and us-east-1c means one data center failure won't take
+                         your service down.
+
+
+╔══════════════════════════════════════════╗
+║  Lecture 2: Addressing for the Internet  ║
+╚══════════════════════════════════════════╝
+
+Every device on the internet needs a unique address.
+IP (Internet Protocol) defines the rules for exchanging information using those addresses.
+
+
+┌─────────────────────────────────┐
+│  IP Addressing                  │
+└─────────────────────────────────┘
+
+  IPv4
+  ────
+  - 32-bit address written as 4 decimal octets separated by dots.
+  - Provides ~4.3 billion unique addresses.
+  - Running out due to the explosion of connected devices.
+  Example: 192.168.1.1 (a typical home router's LAN address)
+
+  IPv6
+  ────
+  - 128-bit alphanumeric address written in 8 groups of 4 hex digits.
+  - Provides 340 undecillion (3.4 × 10^38) unique addresses — essentially unlimited.
+  Example: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+
+
+┌─────────────────────────────────┐
+│  Subnetting                     │
+└─────────────────────────────────┘
+
+  Subnet : A network inside a larger network.
+           Each subnet has its own IPv4 address space, extending the life of IPv4.
+           Example: a company splits 10.0.0.0/16 into department subnets:
+             - Engineering : 10.0.1.0/24  (up to 254 hosts)
+             - Marketing   : 10.0.2.0/24  (up to 254 hosts)
+             - Finance     : 10.0.3.0/24  (up to 254 hosts)
+
+
+┌─────────────────────────────────┐
+│  CIDR Notation                  │
+└─────────────────────────────────┘
+
+  CIDR (Classless Inter-Domain Routing) — a compact way to describe IP ranges.
+
+  Notation : <IP address>/<prefix length>
+             The prefix length (n) is the number of fixed bits in the network part.
+
+  Formula  : 2^(32 - n) = number of available IP addresses in the range.
+
+  Rules    :
+    - First address in a range = Network address    (reserved, not assignable)
+    - Last address in a range  = Broadcast address  (reserved, not assignable)
+    - Usable hosts             = 2^(32 - n) - 2
+
+  Common examples:
+    /32  →  1 address    (single host)         e.g., 203.0.113.5/32
+    /24  →  256 addresses, 254 usable hosts    e.g., 192.168.1.0/24
+    /16  →  65,536 addresses                   e.g., 10.0.0.0/16
+    /0   →  4,294,967,296 addresses            (the entire internet)
+
+  Practical example — AWS VPC:
+    VPC CIDR    : 10.0.0.0/16   (65,536 IPs for the whole VPC)
+    Public sub  : 10.0.1.0/24   (256 IPs; internet-facing load balancers)
+    Private sub : 10.0.2.0/24   (256 IPs; application servers, no direct internet)
+    DB sub      : 10.0.3.0/24   (256 IPs; databases, most restricted)
+
+
+┌─────────────────────────────────┐
+│  DNS (Domain Name System)       │
+└─────────────────────────────────┘
+
+  Maps domain names to IP addresses — like a phone directory for the internet.
+  All mappings are stored in a distributed hierarchy of DNS servers.
+
+  DNS Resolution Flow:
+    1. User types "www.example.com" in a browser.
+    2. OS checks local cache; if no match, query goes to a Recursive Resolver
+       (usually run by your ISP or 8.8.8.8 for Google DNS).
+    3. Resolver asks a Root DNS Server — one of 13 root server clusters worldwide.
+    4. Root server returns the address of the TLD server (e.g., .com TLD server).
+    5. TLD server returns the address of the Authoritative DNS Server for example.com.
+    6. Authoritative server returns the actual IP (e.g., 93.184.216.34).
+    7. IP is returned to the browser and cached locally (per the record's TTL).
+
+  Example — digging a DNS record:
+    $ dig www.github.com
+    ;; ANSWER SECTION:
+    www.github.com.   60  IN  A  140.82.114.4
+
+  Common DNS record types:
+    A     : Maps hostname → IPv4 address
+            Example: github.com → 140.82.114.4
+
+    AAAA  : Maps hostname → IPv6 address
+            Example: github.com → 2606:50c0:8000::153
+
+    CNAME : Alias from one hostname to another
+            Example: www.example.com → example.com
+
+    MX    : Mail server for a domain
+            Example: example.com mail handled by mail.example.com
+
+    TXT   : Arbitrary text; used for domain verification, SPF, DKIM
+            Example: "v=spf1 include:_spf.google.com ~all"
