@@ -1,0 +1,132 @@
+Security for the Internet
+==========================
+
+
+╔════════════════════════════════════════╗
+║  Core Concept: Firewall                ║
+╚════════════════════════════════════════╝
+
+A firewall controls which network traffic is allowed in or out of a system.
+
+  Ingress : Incoming traffic (into your server/network).
+  Egress  : Outgoing traffic (out of your server/network).
+
+  Example — AWS Security Group rules:
+    Inbound rule  : Allow port 443 from 0.0.0.0/0  (HTTPS from anywhere)
+    Inbound rule  : Allow port 22  from 203.0.113.5/32  (SSH from your IP only)
+    Outbound rule : Allow all traffic to 0.0.0.0/0
+
+  WARNING: Setting inbound to 0.0.0.0/0 on all ports is dangerous.
+           As a DevOps engineer, always restrict access to only the ports
+           and IP ranges your service genuinely needs.
+
+
+╔════════════════════════════════════════╗
+║  SSL vs TLS                            ║
+╚════════════════════════════════════════╝
+
+  SSL (Secure Sockets Layer) : The original encryption protocol for HTTPS.
+                               Now considered outdated and insecure.
+
+  TLS (Transport Layer Security) : The modern replacement for SSL.
+                                   TLS 1.2 and TLS 1.3 are the current standards.
+
+  In practice, when people say "SSL certificate" they almost always mean
+  a TLS certificate — the naming stuck even though TLS replaced SSL.
+
+  Certbot : A free, automated tool that obtains TLS certificates from
+            Let's Encrypt and configures them for web servers like Nginx.
+
+  Example — obtaining a TLS cert with Certbot for Nginx:
+    $ sudo certbot --nginx -d example.com -d www.example.com
+    → Certbot contacts Let's Encrypt, validates domain ownership,
+      downloads the cert, and updates your Nginx config automatically.
+      Certificates are valid for 90 days and auto-renewed by a cron job.
+
+
+╔════════════════════════════════════════╗
+║  Ports and Protocols                   ║
+╚════════════════════════════════════════╝
+
+A security rule identifies traffic by 3 things:
+  Protocol : IP address : Port
+
+Services listen at designated, well-known ports:
+
+  ┌──────────────┬──────────┬────────────────────────────────────┐
+  │  Protocol    │  Port    │  Use Case                          │
+  ├──────────────┼──────────┼────────────────────────────────────┤
+  │  HTTPS       │  443     │  Secure web traffic                │
+  │  HTTP        │  80      │  Unsecured web traffic             │
+  │  SSH         │  22      │  Remote server access              │
+  │  SMTP (TLS)  │  465     │  Sending email securely            │
+  │  MySQL       │  3306    │  MySQL database connections        │
+  │  MongoDB     │  27017   │  MongoDB database connections      │
+  │  PostgreSQL  │  5432    │  PostgreSQL database connections   │
+  └──────────────┴──────────┴────────────────────────────────────┘
+
+  Example — UFW (Uncomplicated Firewall) on Ubuntu:
+    $ sudo ufw allow 443/tcp       # allow HTTPS
+    $ sudo ufw allow 22/tcp        # allow SSH
+    $ sudo ufw deny 3306           # block MySQL from public internet
+    $ sudo ufw delete allow 80     # remove HTTP rule
+    $ sudo ufw status verbose      # review all active rules
+
+
+╔════════════════════════════════════════╗
+║  VPC — Virtual Private Cloud           ║
+╚════════════════════════════════════════╝
+
+A VPC is a logically isolated section of a cloud provider's network where
+you define your own IP address space, subnets, and routing rules.
+
+  Internet Gateway : Allows public subnet resources to receive internet traffic.
+                     Example: your public-facing load balancer or web server.
+
+  Public Subnet    : Subnet connected to the Internet Gateway.
+                     Resources here can get inbound traffic from the internet.
+                     Example: load balancer, bastion host.
+
+  Private Subnet   : Subnet with NO direct route to the internet.
+                     Resources here are shielded from inbound internet traffic.
+                     Example: application servers, databases.
+
+  Best practice — always keep databases in a private subnet so they are
+  never directly reachable from the public internet.
+
+  Example — AWS VPC layout:
+    VPC         : 10.0.0.0/16
+    Public sub  : 10.0.1.0/24  → Internet Gateway → reachable from internet
+    Private sub : 10.0.2.0/24  → no direct internet route
+    DB sub      : 10.0.3.0/24  → private, only accepts traffic from 10.0.2.0/24
+
+
+╔════════════════════════════════════════╗
+║  NAT Gateway                           ║
+╚════════════════════════════════════════╝
+
+NAT (Network Address Translation) Gateway allows resources in a private subnet
+to initiate outbound connections to the internet, while blocking any unsolicited
+inbound traffic from the internet.
+
+  How it works:
+    1. Private subnet resource (e.g., 10.0.2.5) sends an outbound request
+       (e.g., to download a software package from the internet).
+    2. NAT Gateway translates the private IP (10.0.2.5) to its own public IP
+       before forwarding the request to the internet.
+    3. The response comes back to the NAT Gateway's public IP and is forwarded
+       to 10.0.2.5 internally.
+    4. The internet never sees or can reach 10.0.2.5 directly.
+
+  Example — AWS NAT Gateway setup:
+    - Place NAT Gateway in the public subnet (it needs internet access).
+    - In the private subnet's route table, add:
+        Destination : 0.0.0.0/0  →  Target: nat-xxxxxxxx
+    - Now private subnet servers can pull updates (apt-get, yum) or call
+      external APIs, but no external party can initiate a connection to them.
+
+  NAT Gateway vs Bastion Host:
+    NAT Gateway  : For outbound internet access from private resources.
+    Bastion Host : A hardened public EC2 instance used to SSH into
+                   private instances — the only door into the private subnet
+                   for administrators.
