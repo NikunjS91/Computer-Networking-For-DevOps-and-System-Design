@@ -1,0 +1,147 @@
+How Data Moves in the Internet — OSI & TCP/IP Models
+======================================================
+
+
+╔══════════════════════════════════════╗
+║  The OSI Model (7 Layers)            ║
+╚══════════════════════════════════════╝
+
+The OSI (Open Systems Interconnection) model breaks network communication into
+7 distinct layers. Each layer has a specific responsibility and only talks to
+the layers directly above and below it.
+
+  ┌─────┬──────────────────────┬────────────────────────────────────────────────┐
+  │  #  │  Layer               │  Responsibility & Example                      │
+  ├─────┼──────────────────────┼────────────────────────────────────────────────┤
+  │  7  │  Application         │  User-facing protocols: HTTP, HTTPS, FTP, DNS  │
+  │     │                      │  Example: browser making a GET request         │
+  ├─────┼──────────────────────┼────────────────────────────────────────────────┤
+  │  6  │  Presentation        │  Data formatting, encryption, compression      │
+  │     │                      │  Example: TLS encrypting HTTPS traffic         │
+  ├─────┼──────────────────────┼────────────────────────────────────────────────┤
+  │  5  │  Session             │  Opens, manages, and closes sessions between   │
+  │     │                      │  two hosts                                     │
+  │     │                      │  Example: keeping your login session active    │
+  ├─────┼──────────────────────┼────────────────────────────────────────────────┤
+  │  4  │  Transport           │  End-to-end delivery; TCP (reliable) or UDP    │
+  │     │                      │  (fast, best-effort)                           │
+  │     │                      │  Example: TCP ensuring all file chunks arrive  │
+  ├─────┼──────────────────────┼────────────────────────────────────────────────┤
+  │  3  │  Network             │  Logical addressing and routing via IP         │
+  │     │                      │  Example: router forwarding packet using IP    │
+  ├─────┼──────────────────────┼────────────────────────────────────────────────┤
+  │  2  │  Data Link           │  Node-to-node transfer using MAC addresses     │
+  │     │                      │  Example: switch forwarding frame to correct   │
+  │     │                      │  port based on MAC address                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────────┤
+  │  1  │  Physical            │  Raw bit transmission over cables or wireless  │
+  │     │                      │  Example: Ethernet cable, Wi-Fi radio signal   │
+  └─────┴──────────────────────┴────────────────────────────────────────────────┘
+
+  Memory aid (top to bottom): "All People Seem To Need Data Processing"
+
+
+╔══════════════════════════════════════╗
+║  The TCP/IP Model (4 Layers)         ║
+╚══════════════════════════════════════╝
+
+The TCP/IP model is the practical, real-world model that the internet actually
+uses. It condenses the 7 OSI layers into 4.
+
+  ┌──────────────────────┬──────────────────┬─────────────────────────────────┐
+  │  TCP/IP Layer        │  OSI Equivalent  │  Protocols                      │
+  ├──────────────────────┼──────────────────┼─────────────────────────────────┤
+  │  Application         │  Layers 5, 6, 7  │  HTTP, HTTPS, FTP, DNS, SMTP    │
+  ├──────────────────────┼──────────────────┼─────────────────────────────────┤
+  │  Transport           │  Layer 4         │  TCP, UDP                       │
+  ├──────────────────────┼──────────────────┼─────────────────────────────────┤
+  │  Internet            │  Layer 3         │  IP, ICMP                       │
+  ├──────────────────────┼──────────────────┼─────────────────────────────────┤
+  │  Network Access      │  Layers 1, 2     │  Ethernet, Wi-Fi, MAC           │
+  └──────────────────────┴──────────────────┴─────────────────────────────────┘
+
+
+╔══════════════════════════════════════╗
+║  TCP — Transmission Control Protocol ║
+╚══════════════════════════════════════╝
+
+TCP provides a guaranteed, ordered, error-checked connection between two hosts.
+Before any data is sent, a Three-Way Handshake establishes the connection.
+
+  Three-Way Handshake:
+    1. SYN      — Client → Server : "I want to connect."
+    2. SYN-ACK  — Server → Client : "Acknowledged, I'm ready."
+    3. ACK       — Client → Server : "Connection established."
+
+  After the handshake, data flows with acknowledgements (ACK) for every segment.
+  If a segment is lost, it is automatically retransmitted.
+
+  Example — loading a webpage:
+    Browser sends SYN to the web server on port 443.
+    Server replies SYN-ACK.
+    Browser sends ACK → connection established.
+    Browser sends HTTP GET request.
+    Server streams back HTML, CSS, JS — each chunk acknowledged by the browser.
+    Connection closed with a FIN/ACK exchange when done.
+
+  Protocols that use TCP:
+    HTTP / HTTPS : Web traffic
+    SSH          : Secure remote login (guaranteed delivery essential)
+    SMTP         : Email sending
+    FTP          : File transfer
+
+
+╔══════════════════════════════════════╗
+║  UDP — User Datagram Protocol        ║
+╚══════════════════════════════════════╝
+
+UDP sends packets without establishing a connection first.
+There is no handshake, no acknowledgement, and no retransmission on loss.
+
+  Trade-off  : Lower latency at the cost of reliability.
+               Some packets may be dropped — that is acceptable for real-time use cases
+               where a slightly degraded stream is better than waiting for retransmits.
+
+  Example use cases:
+    Live video streaming  : A dropped frame is skipped; retransmitting it would
+                            only cause buffering and make things worse.
+    Online gaming         : Position updates need to be fast; a missed packet is
+                            just interpolated on the client side.
+    DNS queries           : Short, single-packet requests where speed matters.
+    VoIP calls            : A missed audio packet causes a brief glitch; a retransmit
+                            would arrive too late to be useful anyway.
+
+  TCP vs UDP — quick comparison:
+    ┌─────────────────┬──────────────────────┬──────────────────────┐
+    │  Feature        │  TCP                 │  UDP                 │
+    ├─────────────────┼──────────────────────┼──────────────────────┤
+    │  Connection     │  Yes (3-way shake)   │  No                  │
+    │  Delivery       │  Guaranteed          │  Best-effort         │
+    │  Order          │  Ordered             │  Not guaranteed      │
+    │  Speed          │  Slower              │  Faster              │
+    │  Use case       │  Web, SSH, email     │  Streaming, gaming   │
+    └─────────────────┴──────────────────────┴──────────────────────┘
+
+
+╔══════════════════════════════════════╗
+║  Common Application-Layer Protocols  ║
+╚══════════════════════════════════════╝
+
+  HTTP / HTTPS
+  ────────────
+  HyperText Transfer Protocol — transfers web pages between client and server.
+  HTTPS = HTTP + TLS encryption.
+  Both run over TCP.
+  Example: your browser fetching https://github.com uses HTTPS over TCP port 443.
+
+  SMTP (Simple Mail Transfer Protocol)
+  ─────────────────────────────────────
+  Used to send email between mail servers and from mail clients to servers.
+  Runs over TCP, typically on port 465 (TLS) or 587 (STARTTLS).
+  Example: Gmail's server uses SMTP to deliver your email to a recipient's server.
+
+  SSH (Secure Shell)
+  ──────────────────
+  Encrypted protocol for remote login and command execution.
+  Runs over TCP port 22. Uses TCP's guaranteed delivery under the hood.
+  Example: $ ssh ubuntu@203.0.113.10 — connects securely to a remote server.

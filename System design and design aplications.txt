@@ -1,0 +1,202 @@
+System Design — How to Design Applications at Scale
+=====================================================
+
+
+╔══════════════════════════════════════════╗
+║  What is System Design and Why It Matters ║
+╚══════════════════════════════════════════╝
+
+An application handles a single, isolated task.
+A system combines multiple services — authentication, databases, streaming,
+notifications, APIs — working together. System design is the process of
+planning how those pieces fit together before writing a single line of code.
+
+  Example: YouTube is not just a "video player app" — it is a system that
+  combines user login, video ingestion, transcoding, CDN delivery, search,
+  recommendations, comments, and billing, all running simultaneously at scale.
+
+Why system design matters:
+  1. Cost     : Poor design decisions early are extremely expensive to undo later.
+  2. Scale    : A design that works for 100 users may collapse at 1,000,000.
+  3. Data flow: Knowing how data moves through your system prevents bottlenecks.
+  4. Clarity  : Forces teams to agree on requirements before building.
+
+  Rule: Always enter system design before writing any code.
+
+
+╔══════════════════════════════════════════╗
+║  Application Architecture Types         ║
+╚══════════════════════════════════════════╝
+
+  Monolith
+  ────────
+  One single deployable application containing all features and services.
+  Simple to develop initially; hard to scale individual parts independently.
+  Example: a single Django app handling auth, payments, and notifications together.
+
+  Microservices
+  ─────────────
+  System split into small, independently deployable services, each responsible
+  for one domain. Services communicate over the network (HTTP/REST or gRPC).
+  Example: Netflix runs hundreds of microservices — one for recommendations,
+  one for billing, one for streaming — each deployed and scaled independently.
+
+  Monorepo
+  ────────
+  A single code repository that holds all microservices together.
+  Each service is still independently deployable but code lives in one place.
+  Example: Google and Uber manage all services in a single large monorepo,
+  making cross-service refactors and shared library updates easier.
+
+  ┌──────────────┬────────────────────────┬────────────────────────────────────┐
+  │  Type        │  Pros                  │  Cons                              │
+  ├──────────────┼────────────────────────┼────────────────────────────────────┤
+  │  Monolith    │  Simple, fast to build │  Hard to scale, risky deploys      │
+  │  Microservices│ Independent scaling   │  Complex networking, more DevOps   │
+  │  Monorepo    │  Shared code, easy     │  Repo can grow very large;         │
+  │              │  cross-service changes │  requires strong CI tooling        │
+  └──────────────┴────────────────────────┴────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════╗
+║  Designing a System — Full Example       ║
+╚══════════════════════════════════════════╝
+
+Scenario: Design an AI-powered application (e.g., an AI chat platform).
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │                      Architecture Layers                     │
+  │                                                              │
+  │  [ User ]                                                    │
+  │      │                                                       │
+  │      ▼                                                       │
+  │  [ UI Layer ]  — React (presentation layer)                  │
+  │      │  REST/HTTPS                                           │
+  │      ▼                                                       │
+  │  [ API Gateway / Load Balancer ]  — ELB routes traffic       │
+  │      │                                                       │
+  │      ▼                                                       │
+  │  [ Backend Services — Microservices ]                        │
+  │      ├── Go (business logic / API layer)                     │
+  │      │       │  gRPC                                         │
+  │      │       ▼                                               │
+  │      ├── Python AI Service (calls LLM via Ollama)            │
+  │      ├── Auth Service (JWT token-based)                      │
+  │      └── Notification Service (WebSocket)                    │
+  │      │                                                       │
+  │      ▼                                                       │
+  │  [ Data Layer ]                                              │
+  │      ├── PostgreSQL  — structured data (users, auth)         │
+  │      └── MongoDB     — unstructured data (chat history, logs)│
+  │      │                                                       │
+  │      ▼                                                       │
+  │  [ Cache Layer ]  — Redis (temporary fast storage)           │
+  └──────────────────────────────────────────────────────────────┘
+
+  Service breakdown (8 microservices):
+    1. UI (React)            — presentation layer
+    2. API Gateway           — entry point, routes requests
+    3. Go Backend            — core business logic
+    4. Python AI Service     — LLM calls via Ollama
+    5. Auth Service          — JWT-based login/session management
+    6. Notification Service  — real-time events via WebSocket
+    7. PostgreSQL            — relational data (users, roles)
+    8. MongoDB               — unstructured/document data (messages, logs)
+
+
+┌─────────────────────────────────┐
+│  Communication Protocols        │
+└─────────────────────────────────┘
+
+  REST (HTTP/HTTPS) : Used between UI and backend API gateway.
+                      Stateless, easy to debug, widely supported.
+                      Example: POST /api/chat sends a message to the Go backend.
+
+  gRPC              : Used for backend-to-backend calls (Go ↔ Python AI service).
+                      Binary protocol over HTTP/2 — much faster than REST for
+                      internal service communication.
+                      Example: Go service calls Python AI service via a gRPC method
+                      GenerateResponse(prompt) → stream of tokens.
+
+  WebSocket         : Used for real-time, bi-directional communication.
+                      Example: notification service pushes new message alerts to
+                      the browser the moment they arrive, without polling.
+
+
+┌─────────────────────────────────┐
+│  Data Storage Strategy          │
+└─────────────────────────────────┘
+
+  PostgreSQL (SQL / Relational)
+    Use for structured, relational data with strict schemas.
+    Example: users table (id, email, password_hash, created_at),
+             sessions table (user_id, jwt_token, expires_at).
+
+  MongoDB (NoSQL / Document)
+    Use for unstructured or semi-structured data with flexible schemas.
+    Example: storing AI chat history as JSON documents:
+      { user_id: "u123", messages: [ { role: "user", content: "Hello" }, ... ] }
+
+  Redis (Cache)
+    In-memory store for temporary, frequently-accessed data.
+    Reduces database load significantly.
+    Example: cache the result of an expensive LLM response for 60 seconds so
+    repeated identical prompts don't re-call the model.
+
+
+╔══════════════════════════════════════════╗
+║  Scaling the System                      ║
+╚══════════════════════════════════════════╝
+
+┌─────────────────────────────────┐
+│  Load Balancing                 │
+└─────────────────────────────────┘
+
+  ELB (Elastic Load Balancer) sits in front of the microservices layer.
+  Distributes incoming requests across multiple instances of each service,
+  preventing any single server from being overwhelmed.
+
+  Example: 10,000 users hit the API gateway simultaneously.
+  ELB distributes them across 5 Go backend instances, each handling ~2,000 req/s.
+
+
+┌─────────────────────────────────┐
+│  Kubernetes (Container Scaling) │
+└─────────────────────────────────┘
+
+  Kubernetes orchestrates containers (Docker) across a cluster of machines.
+  It is the standard choice for running and scaling microservices.
+
+  HPA (Horizontal Pod Autoscaler)
+    Adds more instances (pods) of a service when CPU/memory exceeds a threshold.
+    Server specs stay the same — just more copies run in parallel.
+    Example: during peak hours, Go backend scales from 2 pods → 10 pods automatically.
+
+  VPA (Vertical Pod Autoscaler)
+    Increases CPU/RAM allocated to existing pods instead of adding more.
+    Example: Python AI service pod gets bumped from 2 GB RAM → 8 GB RAM
+             to handle larger LLM model inference.
+
+  Example — Kubernetes deployment snippet (Go backend):
+    replicas: 3
+    resources:
+      requests: { cpu: "250m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+    → HPA watches CPU; if average usage > 70%, spins up more replicas.
+
+
+┌─────────────────────────────────┐
+│  Monitoring Layer               │
+└─────────────────────────────────┘
+
+  Prometheus : Collects metrics from all services (CPU, memory, request rates,
+               error rates, latency). Services expose a /metrics endpoint.
+               Example: Go backend exposes http_requests_total counter that
+               Prometheus scrapes every 15 seconds.
+
+  Grafana    : Visualises Prometheus metrics in dashboards and sends alerts.
+               Example: a Grafana dashboard shows request latency per service;
+               an alert fires if p99 latency exceeds 500 ms for 2 minutes.
+
+  Together, Prometheus + Grafana give you full visibility into system health
+  so incidents can be diagnosed even when no developer is watching live.
